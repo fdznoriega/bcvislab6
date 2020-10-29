@@ -10,7 +10,7 @@ export default function StackedAreaChart(container) {
                     .attr("width", width + margin.left + margin.right)
                     .attr("height", height + margin.top + margin.bottom)
                     .append("g")
-                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
 
     // scaleTime, scaleLinear, scaleOrdinal
     const xScale = d3.scaleTime().range([0, width]);
@@ -34,9 +34,15 @@ export default function StackedAreaChart(container) {
                         .attr("x", 10)
                         .attr("y", 10)
 
-    function update(data) {
+    let selected = null, 
+        xDomain, 
+        data; 
+    
+    function update(_data) {
 
-        let keys = data.columns.slice(1);
+        data = _data;
+
+        let keys = selected ? [selected] : data.columns.slice(1);
 
         var stack = d3.stack()
                         .keys(keys)
@@ -46,11 +52,11 @@ export default function StackedAreaChart(container) {
         var stackedData = stack(data);
 
         // update scales & axes
-        xScale.domain(d3.extent(data.map(d => d.date)));   // x scale is time. assuming sorted...
+        xScale.domain(xDomain ? xDomain : d3.extent(data.map(d => d.date)))
         yScale.domain([0, d3.max(stackedData, 
             d => d3.max(d, dd => dd[1])
-        )]); 
-        
+        )]);
+              
         colorScale.domain(keys);
 
         // create an area generator
@@ -58,22 +64,40 @@ export default function StackedAreaChart(container) {
 	                    .x(d => xScale(d.data.date))
 	                    .y0(d => yScale(d[0]))
                         .y1(d => yScale(d[1]));
+
+        // add clip path
+        svg.append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", width)// the size of clip-path is the same as
+            .attr("height", height); // the chart area
                         
         // create areas based on stack
         const areas = svg.selectAll(".area")
             .data(stackedData, d => d.key);
         
         areas.enter()
-            .append("path")
-            .attr("fill", d => colorScale(d.key))
+                .append("path")
+                .attr("class", "area")
+                .attr("fill", d => colorScale(d.key))
             .merge(areas)
-            .attr("d", area)
-            .on("mouseover", (event, d, i) => tooltip.text(d.key))
-            .on("mouseout", (event, d, i) => tooltip.text(""))
+                .attr("d", area)
+                .attr("clip-path", "url(#clip)") // add it to areas
+                .on("mouseover", (event, d, i) => tooltip.text(d.key))
+                .on("mouseout", (event, d, i) => tooltip.text(""))
+                .on("click", (event, d) => {
+                    if(selected === d.key) {
+                        selected = null;
+                    }
+                    else {
+                        selected = d.key;
+                    }
+                    update(data);
+                })
 
         areas.exit().remove();
+        
         // update axes
-
         xAxis.scale(xScale);
         yAxis.scale(yScale);
 
@@ -83,7 +107,12 @@ export default function StackedAreaChart(container) {
 
     }
 
+    function filterByDate(range) {
+        xDomain = range;
+        update(data);
+    }
+
     return {
-        update
+        update, filterByDate
     }
 }

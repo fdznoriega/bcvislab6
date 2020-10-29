@@ -33,17 +33,25 @@ export default function AreaChart(container) {
     const area = d3.area();
 
     // create a brush
+    const listeners = { brushed: null };
+
     const brush = d3.brushX()
                     .extent([   [0,0] , [width, height]  ])
                     .on("brush", brushed)
-                    .on("end", d => console.log("byebye", d))
+                    .on("end", brushEnded)
 
     function brushed(event) {
         if (event.selection) {
-            console.log(event.selection);
-            let values = event.selection.map(xScale.invert)
-            console.log(values);
+            listeners["brushed"](event.selection.map(xScale.invert));
         }
+    }
+
+    function brushEnded(event) {
+        
+    }
+
+    function on(event, listener) {
+        listeners[event] = listener;
     }
 
     // ~ summon ~ brush
@@ -73,6 +81,6 @@ export default function AreaChart(container) {
 	}
 
 	return {
-		update // ES6 shorthand for "update": update
+		update, on // ES6 shorthand for "update": update
 	};
 }

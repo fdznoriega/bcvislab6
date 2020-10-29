@@ -18,15 +18,19 @@ d3.csv('unemployment.csv', d3.autoType)
             d.total = sum;
         });
         
-        doStuff(data);
+        createVis(data);
     });
 
-function doStuff(data) {
+function createVis(data) {
     // update dataset
     dataset = data;
 
     let areaChart = AreaChart(".chart");
     areaChart.update(dataset);
+
+    areaChart.on("brushed", (range) => {
+        stackedAreaChart.filterByDate(range);
+    });
 
     let stackedAreaChart = StackedAreaChart(".chart");
     stackedAreaChart.update(dataset);
